@@ -1,0 +1,26 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  dnsNames:
+    - longhorn.rgsdemo.com
+    - www.longhorn.rgsdemo.com
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 4096
+  isCA: false
+  usages:
+    - server auth
+    - client auth
+  subject:
+    organizations:
+      - rgs-prosvcs
+  issuerRef:
+    name: letsencrypt-issuer
+    kind: ClusterIssuer
+  secretName: longhorn.local-tls

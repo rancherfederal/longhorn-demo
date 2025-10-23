@@ -1,0 +1,29 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: longhorn
+  namespace: kube-system
+spec:
+  version: v1.10.0
+  chart: longhorn
+  repo: https://charts.longhorn.io
+  failurePolicy: abort
+  targetNamespace: longhorn-system
+  createNamespace: true
+  valuesContent: |-
+    defaultSettings:
+      allowCollectingLonghornUsageMetrics: false
+      defaultReplicaCount: 2
+      replicaAutoBalance: best-effort
+      storageMinimalAvailablePercentage: 10
+      storageReservedPercentageForDefaultDisk: 0
+    ingress:
+      enabled: true
+      host: longhorn.rgsdemo.com
+      tls: true
+      ingressClassName: traefik
+      annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: longhorn-system-auth@kubernetescrd
+    persistence:
+      defaultClassReplicaCount: 2
+      defaultDataLocality: best-effort

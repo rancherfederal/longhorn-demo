@@ -1,0 +1,41 @@
+#cloud-config
+packages:
+  - bash-completion
+  - cryptsetup
+  - device-mapper-multipath
+  - iscsi-initiator-utils
+  - vim
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGUV5mYJt2mNSayglG9+ez4W66Cj5PdBfvg5+Mqf+e9G
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIFImBVFJQBAFxUj0T3U8Twht11AeH7S3ZBAufhHTHjz
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPXKUEIYjdLCC3sc7M7m9CwP48EAr+OIWg/HaRct4ySJ
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINXFi3fAAMeUnzfGBduansm8Cr81CWMHwQpNXjgm6hoi
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKfcJb6/jblOBMgwYwhZWk65vIpFuv9PZ2Dt0ulO+ccK
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3Trbi3L21QECLF067lbZU4tjV2l3wnhE++C7PTZ6mQ
+write_files:
+  - content: |-
+      dm_crypt
+      iscsi_tcp
+      nfs
+    path: /etc/modules-load.d/10-longhorn.conf
+    owner: root:root
+    permissions: '0644'
+  - content: |-
+      blacklist {
+          devnode "^sd[a-z0-9]+"
+      }
+    path: /etc/multipath.conf
+    owner: root:root
+    permissions: '0644'
+  - content: |-
+      Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+    path: /etc/sudoers.d/80-secure-path
+    owner: root:root
+    permissions: '0640'
+  - content: |-
+      disable:
+        - local-storage
+      selinux: true
+    path: /etc/rancher/k3s/config.yaml
+    owner: root:root
+    permissions: '0640'

@@ -1,0 +1,13 @@
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/backend.tf
+**/k3s.yaml
+**/rke2.yaml
+**/auth
+**/*.swp
+**/*.crt
+**/*.key
+**/*.csr
+**/*.srl
+t2/
