@@ -4,7 +4,7 @@
 
 Longhorn is split into control plane and data plane components.
 
-The primary control plane component is the `longhorn-manager`, which is a `DaemonSet` running on all nodes that implements a Kubernetes controller, providing an API that can be called from either the Longhorn UI or from the CSI plugin. In response to a request to create a `PersistenVolume`, the Kubernetes API server calls the `longhorn-csi-plugin`, which then requests the `longhorn-manager` to create a Kubernetes custom resource `Volume`.
+The primary control plane component is the `longhorn-manager`, which is a `DaemonSet` running on all nodes that implements a Kubernetes controller, providing an API that can be called from either the Longhorn UI or from the CSI plugin. In response to a request to create a `PersistentVolume`, the Kubernetes API server calls the `longhorn-csi-plugin`, which then requests the `longhorn-manager` to create a Kubernetes custom resource `Volume`.
 
 When the API server creates the `Volume`, the `longhorn-manager` creates an instance of the `longhorn-engine` on the node the volume will attach to. The `longhorn-engine` is the primary data plane component. For the v1 data engine, a separate `longhorn-engine` instance is created for every volume, serving as an intermediary between the pod and each replica for a volume. Replicas are associated with a particular physical disk on a cluster node, exposed as iSCSI targets, with the engine acting as the iSCSI client or initiator. The `longhorn-engine` exposes volumes as block devices, which the `longhorn-csi-driver` formats and mounts to the cluster node requested. The `kubelet` then bind mounts this into the pod, exposing persistent storage to the application.
 
