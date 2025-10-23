@@ -60,14 +60,20 @@ timeout 10m bash -c 'until [ -f /etc/rancher/k3s/k3s.yaml ]; do sleep 1; done'
 # and store it in an Opaque secret under the key 'auth', which standard ingress
 # controllers including traefik can use
 cat <<EOF | /usr/local/bin/kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml create -f -
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-system
+---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: basicauth
+  name: authsecret
   namespace: longhorn-system
 type: kubernetes.io/basic-auth
 stringData:
-  username: adam
+  username: longhorn
   password: $(openssl rand -hex 20)
 EOF
 

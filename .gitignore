@@ -10,4 +10,4 @@
 **/*.key
 **/*.csr
 **/*.srl
-t2/
+**/.terraform.lock.hcl
