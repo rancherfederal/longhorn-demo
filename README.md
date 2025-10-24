@@ -1,22 +1,24 @@
 # Longhorn Demo
 
+All commands are assumed to be run from the repo root.
+
 ## Create resources
 
-From the `terraform/` subdirectory:
-
 ```sh
-terraform apply -auto-approve
+terraform -chdir=terraform apply -auto-approve
 ```
 
 ## ssh to node
 
-From the `terraform/` subdirectory:
-
 ```sh
-ssh -o StrictHostKeyChecking=no rocky@$(terraform output server_ip | tr -d '"')
+ssh rocky@$(terraform -chdir=terraform output server_ip | tr -d '"')
 ```
 
-Don't turn off host key checking in general. This is for DEMO PURPOSES ONLY! 
+It will take a few minutes for `cloud-init` to complete and `k3s` will not be available until that happens, so you can watch log from the host:
+
+```sh
+sudo tail -f /var/log/cloud-init-output.log
+```
 
 ## Install Resources
 

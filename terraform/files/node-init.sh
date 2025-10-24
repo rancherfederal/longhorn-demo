@@ -30,6 +30,7 @@ mount -a
 # need public ip in kubeconfig cert to access from outside
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
+echo -en "\n" >> /etc/rancher/k3s/config.yaml
 echo "tls-san:" >> /etc/rancher/k3s/config.yaml
 echo "  - $PUBLIC_IP" >> /etc/rancher/k3s/config.yaml
 
@@ -45,7 +46,6 @@ systemctl start iscsid
 # conveniences
 echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> /root/.bashrc
 echo "export CRI_CONFIG_FILE=/var/lib/rancher/k3s/agent/etc/crictl.yaml" >> /root/.bashrc
-echo "export SYSTEMD_LESS=\"\"" >> /root/.bashrc # paging with line wrap so you can actually read the log
 
 # wait for k3s to be up - won't take 10 minutes, but being safe
 timeout 10m bash -c 'until [ -f /etc/rancher/k3s/k3s.yaml ]; do sleep 1; done'
