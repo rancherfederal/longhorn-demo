@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: www-web-0
+  namespace: longhorn-demo
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: longhorn
+  volumeName: www-web-vol-0
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: www-web-1
+  namespace: longhorn-demo
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: longhorn
+  volumeName: www-web-vol-1
