@@ -1,0 +1,5 @@
+data:
+  default-resource.yaml: |
+    "backup-target": "s3://longhorn-demo-backups@us-east-1/"
+    "backup-target-credential-secret": "aws-backups-secret"
+    "backupstore-poll-interval": "300"
