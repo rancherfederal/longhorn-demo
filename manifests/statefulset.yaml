@@ -14,6 +14,16 @@ spec:
     app: nginx
   type: ClusterIP
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: entrypoint
+  namespace: longhorn-demo
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+    [ -f /usr/share/nginx/html/index.html ] || echo "<h1>Hello world!</h1>" >> /usr/share/nginx/html/index.html
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -48,6 +58,21 @@ spec:
         volumeMounts:
         - name: www
           mountPath: /usr/share/nginx/html
+      initContainers:
+      - name: hello
+        image: busybox:stable
+        command:
+        - /scripts/entrypoint.sh
+        volumeMounts:
+        - name: entrypoint
+          mountPath: /scripts
+        - name: www
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: entrypoint
+        configMap:
+          name: entrypoint
+          defaultMode: 0755
   volumeClaimTemplates:
   - metadata:
       name: www

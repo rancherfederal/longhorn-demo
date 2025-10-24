@@ -21,8 +21,8 @@ LONGHORN_UUID=$(blkid -s UUID -o value "/dev/${VAR_LIB_LONGHORN_DEV}p1")
 mkdir -p /var/lib/rancher
 mkdir -p /var/lib/longhorn
 
-echo "UUID=${RANCHER_UUID} /var/lib/rancher ext4 defaults 0 0" >> /etc/fstab
-echo "UUID=${LONGHORN_UUID} /var/lib/longhorn ext4 defaults 0 0" >> /etc/fstab
+echo "UUID=${RANCHER_UUID} /var/lib/rancher ext4 defaults 0 2" >> /etc/fstab
+echo "UUID=${LONGHORN_UUID} /var/lib/longhorn ext4 defaults 0 2" >> /etc/fstab
 
 systemctl daemon-reload
 mount -a

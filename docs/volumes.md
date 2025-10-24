@@ -9,82 +9,127 @@ kubectl create ns longhorn-demo
 ## Create resources with peristent storage
 
 ```sh
-kubectl create -f manifests/pod_with_pvc.yaml
-```
-
-```sh
 kubectl create -f manifests/statefulset.yaml
 ```
 
-See the volumes being created. The Longhorn custom resource `Volume` exists in the `longhorn-system` namespace.
+This creates a `StatefulSet` with two pods that share a single data volume. The pods run `nginx` and the volume stores the static web data. In this case, the volume would start out empty, so an init container is added that checks for the existence of an `index.html` file and writes one if it does not exist.
+
+From the remote host, we can see that Longhorn has created `Volume` CRs:
 
 ```sh
 kubectl get volumes.longhorn.io -n longhorn-system
 ```
 ```
-NAME                                       DATA ENGINE   STATE      ROBUSTNESS   SCHEDULED   SIZE         NODE                            AGE
-pvc-89c15dec-5de1-4b58-b791-7fd23d50025b   v1            attached   healthy                  2147483648   ip-172-31-83-248.ec2.internal   102m
-pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f   v1            attached   healthy                  1073741824   ip-172-31-83-248.ec2.internal   27m
-pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152   v1            attached   healthy                  1073741824   ip-172-31-83-248.ec2.internal   34m
+pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151   v1            attached   healthy                  1073741824   ip-172-31-43-85.ec2.internal   47m
+pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da   v1            attached   healthy                  1073741824   ip-172-31-43-85.ec2.internal   47m
 ```
 
-The corresponding `PersistentVolumeClaim` objects are in the `demo` namespace:
+We should also see four `Replica` CRs, since we set the default storage class to have two per volume:
 
 ```sh
-kubectl get pvc -n demo
+kubectl get replicas.longhorn.io -n longhorn-system
 ```
 ```
-NAME                STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
-longhorn-volv-pvc   Bound    pvc-89c15dec-5de1-4b58-b791-7fd23d50025b   2Gi        RWO            longhorn       <unset>                 104m
-www-web-0           Bound    pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152   1Gi        RWO            longhorn       <unset>                 35m
-www-web-1           Bound    pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f   1Gi        RWO            longhorn       <unset>                 28m
-```
-
-## Observe block devices created
-
-On the cluster node itself, we can now see the block devices that were created by the `longhorn-engine`, along with their corresponding bind mounts created by the `kubelet`.
-
-```
-[root@ip-172-31-83-248 ~]# lsblk
-NAME MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINTS
-sda    8:0    0    2G  0 disk  /var/lib/kubelet/pods/cbec4259-f5b9-43c6-9ecf-096dba758668/volumes/kubernetes.io~csi/pvc-89c15dec-5de1-4b58-b791-7fd23d50025b/mount
-                               /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/59cf644090dc8a27d789b0f496d04ba9854a46b20971b448ff5724899
-                               57b76ec/globalmount
-sdb    8:16   0    1G  0 disk  /var/lib/kubelet/pods/a476f5be-ad29-4bad-a133-c19f56dbb315/volumes/kubernetes.io~csi/pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152/mount
-                               /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/718c24a54c3a1e77b7233c9bf9c587b6cf3726d92fb23e696410e9752
-                               aa23030/globalmount
-sdc    8:32   0    1G  0 disk  /var/lib/kubelet/pods/15bd1932-07f6-4803-b8fa-ec73a2c57312/volumes/kubernetes.io~csi/pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f/mount
-                               /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/93d48e653f6aef1d4aab606f6275971ef1f63db92443690463b291b87
-                               d8c49ef/globalmount
+NAME                                                  DATA ENGINE   STATE     NODE                           DISK                                   INSTANCEMANAGER                                     IMAGE                                AGE
+pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-r-67ec9def   v1            running   ip-172-31-43-85.ec2.internal   258d53fc-faa0-4b26-847b-d7830d8fde40   instance-manager-3320698e8605eb0ac2c1deabe9242ec2   longhornio/longhorn-engine:v1.10.0   48m
+pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-r-7e4c39be   v1            running   ip-172-31-43-85.ec2.internal   258d53fc-faa0-4b26-847b-d7830d8fde40   instance-manager-3320698e8605eb0ac2c1deabe9242ec2   longhornio/longhorn-engine:v1.10.0   48m
+pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-r-696a0c50   v1            running   ip-172-31-43-85.ec2.internal   258d53fc-faa0-4b26-847b-d7830d8fde40   instance-manager-3320698e8605eb0ac2c1deabe9242ec2   longhornio/longhorn-engine:v1.10.0   48m
+pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-r-fd2825a5   v1            running   ip-172-31-43-85.ec2.internal   258d53fc-faa0-4b26-847b-d7830d8fde40   instance-manager-3320698e8605eb0ac2c1deabe9242ec2   longhornio/longhorn-engine:v1.10.0   48m
 ```
 
-We see there now exist devices `/dev/sda`, `/dev/sdb`, and `/dev/sdc`. We can inspect to see these are not true SCSI devices:
+We can see the naming convention is `VOLUME_NAME-r-HASH` where `VOLUME_NAME` is the name of both the Longhorn `Volume` CR and the Kubernetes `PeristentVolume`, which we can also see:
+
+```sh
+kubectl get pv
+```
+```
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                     STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151   1Gi        RWO            Delete           Bound    longhorn-demo/www-web-1   longhorn       <unset>                          51m
+pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da   1Gi        RWO            Delete           Bound    longhorn-demo/www-web-0   longhorn       <unset>                          51m
+```
+
+Though `PersistentVolumeClaim` resources are namespaced and will exist in the same namespace as the pods they attach to, the `PersistentVolume` resources and not namespaced and the Longhorn `Volume` and `Replica` CRs will always exist in the `longhorn-system` namespace.
+
+## Data persistence
+
+Recall that the fundamental purpose of a `PersistentVolume` in Kubernetes is to get around the fact that the writable layer in a container itself is ephemeral. When the container is destroyed, any data written to it is also destroyed. The `PersistentVolume` allows externally-persisted storage to be mounted inside of a pod such that it outlives the pod. We can observe this by visiting the website we created. First, forward the service port 80 to 8080 on the localhost:
+
+```sh
+kubectl port-forward -n longhorn-demo svc/nginx 8080:80
+```
+
+Then navigate to http://localhost:8080 and you should see the website created by the init container:
+
+![hello world](static/hello.png)
+
+If we delete the pods, this website should still exist when `nginx` comes back up in the new pods. First, however, we want to remove the init container from the pod spec, because it would create a new website if the old one is gone:
+
+```sh
+kubectl patch statefulset web \
+  -n longhorn-demo \
+  -p '{"spec":{"template":{"spec":{"initContainers":[]}}}}' \
+  --type=merge
+```
+
+Now delete the pods:
+
+```sh
+kubectl scale statefulset web -n longhorn-demo --replicas=0
+```
+
+Scale back up to recreate them:
+
+```sh
+kubectl scale statefulset web -n longhorn-demo --replicas=2
+```
+
+If you watch the pods get created, you should now see no init stage. When at least one pod is ready, the service will forward to it, so refresh the web page and it should still be there (restart the port forward if necessary).
+
+## Backing disk resources
+
+On the cluster node itself, we can now see the block devices that were created by the `longhorn-engine`, along with their mount points.
 
 ```
-[root@ip-172-31-83-248 ~]# PAGER="" udevadm info /dev/sda
-P: /devices/platform/host0/session1/target0:0:0/0:0:0:1/block/sda
+[root@ip-172-31-43-85 ~]# lsblk
+NAME MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sda    8:0    0    1G  0 disk /var/lib/kubelet/pods/ab65343b-6368-4754-997c-5069ede552ee/volumes/kubernetes.io~csi/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da/mount
+                              /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/b9d26801e808c74a3de4d34b9a0ffe8e3960029f0c62d023e0c70e7c
+                              a8deec30/globalmount
+sdb    8:16   0    1G  0 disk /var/lib/kubelet/pods/05084abf-a571-4059-92e8-598989494159/volumes/kubernetes.io~csi/pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151/mount
+                              /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/09d504a83e6b85590ba368dbde6d329545ab6da116a80b3ecda8dd33
+                              c0b49693/globalmount
+```
+
+We see there now exist device nodes `/dev/sda` and `/dev/sdb`, corresponding to the two volumes. These block devices were created by the Longhorn engine, then mounted by the CSI driver to the mount point under `/var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/`, then bind-mounted from there to the pods they attach to by the `kubelet`, which are the mount points we see under `/var/lib/kubelet/pods/`.
+
+These devices are created by the iSCSI initiator over the network from their true backing disk. We can see this by viewing the device info:
+
+```
+[[root@ip-172-31-43-85 ~]# PAGER="" udevadm info /dev/sda
+P: /devices/platform/host0/session8/target0:0:0/0:0:0:1/block/sda
 M: sda
 U: block
 T: disk
 D: b 8:0
 N: sda
 L: 0
-S: disk/by-path/ip-10.42.0.34:3260-iscsi-iqn.2019-10.io.longhorn:pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-lun-1
-S: disk/by-id/scsi-360000000000000000e00000000010001
-S: disk/by-diskseq/9
-S: disk/by-id/scsi-1IET_00010001
-S: disk/by-id/scsi-SIET_VIRTUAL-DISK_beaf11
 S: disk/by-id/wwn-0x60000000000000000e00000000010001
+S: disk/by-diskseq/17
+S: disk/by-uuid/b5585dfc-84c6-4193-913d-49bf8f4e46a9
+S: disk/by-id/scsi-360000000000000000e00000000010001
+S: disk/by-id/scsi-SIET_VIRTUAL-DISK_beaf11
 S: disk/by-id/scsi-33000000100000001
-Q: 9
-E: DEVPATH=/devices/platform/host0/session1/target0:0:0/0:0:0:1/block/sda
+S: disk/by-path/ip-10.42.0.19:3260-iscsi-iqn.2019-10.io.longhorn:pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-lun-1
+S: disk/by-id/scsi-1IET_00010001
+Q: 17
+E: DEVPATH=/devices/platform/host0/session8/target0:0:0/0:0:0:1/block/sda
 E: DEVNAME=/dev/sda
 E: DEVTYPE=disk
-E: DISKSEQ=9
+E: DISKSEQ=17
 E: MAJOR=8
 E: MINOR=0
 E: SUBSYSTEM=block
-E: USEC_INITIALIZED=46753988769
+E: USEC_INITIALIZED=5220723236
 E: ID_SCSI=1
 E: ID_VENDOR=IET
 E: ID_VENDOR_ENC=IET\x20\x20\x20\x20\x20
@@ -99,8 +144,15 @@ E: ID_WWN_VENDOR_EXTENSION=0x0e00000000010001
 E: ID_WWN_WITH_EXTENSION=0x60000000000000000e00000000010001
 E: ID_SCSI_SERIAL=beaf11
 E: ID_BUS=scsi
-E: ID_PATH=ip-10.42.0.34:3260-iscsi-iqn.2019-10.io.longhorn:pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-lun-1
-E: ID_PATH_TAG=ip-10_42_0_34_3260-iscsi-iqn_2019-10_io_longhorn_pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-lun-1
+E: ID_PATH=ip-10.42.0.19:3260-iscsi-iqn.2019-10.io.longhorn:pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-lun-1
+E: ID_PATH_TAG=ip-10_42_0_19_3260-iscsi-iqn_2019-10_io_longhorn_pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-lun-1
+E: ID_FS_UUID=b5585dfc-84c6-4193-913d-49bf8f4e46a9
+E: ID_FS_UUID_ENC=b5585dfc-84c6-4193-913d-49bf8f4e46a9
+E: ID_FS_VERSION=1.0
+E: ID_FS_BLOCKSIZE=4096
+E: ID_FS_LASTBLOCK=262144
+E: ID_FS_TYPE=ext4
+E: ID_FS_USAGE=filesystem
 E: SCSI_TPGS=0
 E: SCSI_TYPE=disk
 E: SCSI_VENDOR=IET
@@ -115,140 +167,204 @@ E: SCSI_IDENT_LUN_NAA_LOCAL=3000000100000001
 E: SCSI_IDENT_LUN_NAA_REGEXT=60000000000000000e00000000010001
 E: MPATH_SBIN_PATH=/sbin
 E: DM_MULTIPATH_DEVICE_PATH=0
-E: NVME_HOST_IFACE=none
-E: DEVLINKS=/dev/disk/by-path/ip-10.42.0.34:3260-iscsi-iqn.2019-10.io.longhorn:pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-lun-1 /dev/disk/by-id/scsi-360000000000000000e00000000010001 /dev/disk/by-diskseq/9 /dev/disk/by-id/scsi-1IET_00010001 /dev/disk/by-id/scsi-SIET_VIRTUAL-DISK_beaf11 /dev/disk/by-id/wwn-0x60000000000000000e00000000010001 /dev/disk/by-id/scsi-33000000100000001
+E: DEVLINKS=/dev/disk/by-id/wwn-0x60000000000000000e00000000010001 /dev/disk/by-diskseq/17 /dev/disk/by-uuid/b5585dfc-84c6-4193-913d-49bf8f4e46a9 /dev/disk/by-id/scsi-360000000000000000e00000000010001 /dev/disk/by-id/scsi-SIET_VIRTUAL-DISK_beaf11 /dev/disk/by-id/scsi-33000000100000001 /dev/disk/by-path/ip-10.42.0.19:3260-iscsi-iqn.2019-10.io.longhorn:pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-lun-1 /dev/disk/by-id/scsi-1IET_00010001
 E: TAGS=:systemd:
 E: CURRENT_TAGS=:systemd:
 ```
 
-Note the IP in the device paths. This is the IP of the instance manager pod:
+Note the IP in the device paths, 10.42.0.19. This is the IP of the instance manager pod:
+
+```
+[root@ip-172-31-43-85 ~]# kubectl get pod -n longhorn-system -l longhorn.io/component=instance-manager -o=jsonpath="{range .items[*]}{.status.podIP}"
+10.42.0.19
+```
+
+We can also see this by looking directly at `/dev/disk/by-path/`:
+
+```
+[root@ip-172-31-43-85 ~]# ls /dev/disk/by-path
+ip-10.42.0.19:3260-iscsi-iqn.2019-10.io.longhorn:pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-lun-1  pci-0000:00:04.0-nvme-1-part4
+ip-10.42.0.19:3260-iscsi-iqn.2019-10.io.longhorn:pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-lun-1  pci-0000:00:1e.0-nvme-1
+pci-0000:00:04.0-nvme-1                                                                          pci-0000:00:1e.0-nvme-1-part1
+pci-0000:00:04.0-nvme-1-part1                                                                    pci-0000:00:1f.0-nvme-1
+pci-0000:00:04.0-nvme-1-part2                                                                    pci-0000:00:1f.0-nvme-1-part1
+pci-0000:00:04.0-nvme-1-part3
+```
+
+We can see all of the local devices have paths corresponding to a PCI bus, whereas the iSCSI devices have a path corresponding to an IP address. We can also see the data in all of its various locations. First the global mount to the cluster node created by the CSI driver:
+
+```
+[root@ip-172-31-43-85 ~]# ls /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/b9d26801e808c74a3de4d34b9a0ffe8e3960029f0c62d023e0c70e7ca8deec30/globalmount
+index.html  lost+found
+[root@ip-172-31-43-85 ~]# cat /var/lib/kubelet/plugins/kubernetes.io/csi/driver.longhorn.io/b9d26801e808c74a3de4d34b9a0ffe8e3960029f0c62d023e0c70e7ca8deec30/globalmount/index.html
+<h1>Hello world!</h1>
+```
+
+Then the bind mount into the pod:
+
+```
+[root@ip-172-31-43-85 ~]# ls /var/lib/kubelet/pods/ab65343b-6368-4754-997c-5069ede552ee/volumes/kubernetes.io~csi/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da/mount
+index.html  lost+found
+[root@ip-172-31-43-85 ~]# cat /var/lib/kubelet/pods/ab65343b-6368-4754-997c-5069ede552ee/volumes/kubernetes.io~csi/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da/mount/index.html
+<h1>Hello world!</h1>
+```
+
+Finally, we can see the replicas themselves, which serve as the backing images for the iSCSI targets created by the `longhorn-manager`. These exist under `/var/lib/longhorn/replicas/`.
+
+```
+[root@ip-172-31-43-85 ~]# ls /var/lib/longhorn/replicas/
+pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-4b1b86ba  pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-644f7035
+pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-eecc3fc9  pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-e14bb0c8
+```
+
+In this case, it won't matter which we look at, since they all contain the same data, but we will pick the one corresponding to `/dev/sda` that we looked at earlier, which is associated with the `PersistentVolume` `pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da`, a fact we can incur from the presence of that string in its path. We see there are two replicas associated with that volume, as expected. In a multi-node cluster, these would exist on different nodes, and in many cases on separate disks, but we have a simplified installation for the demo.
+
+```
+[root@ip-172-31-43-85 ~]# ls /var/lib/longhorn/replicas/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-644f7035
+volume-head-000.img  volume-head-000.img.meta  volume.meta
+```
+
+Longhorn stores replicas as an ordered sequence of snapshots, but since this volume was only recently created and has no snapshots, the head is the only image in there. We can mount it to the node using a local mount instead of via iSCSI and observe the same data as seen by the pod:
+
+```
+[root@ip-172-31-43-85 ~]# mount -o loop /var/lib/longhorn/replicas/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-644f7035/volume-head-000.img /mnt
+[root@ip-172-31-43-85 ~]# ls /mnt
+index.html  lost+found
+[root@ip-172-31-43-85 ~]# cat /mnt/index.html
+<h1>Hello world!</h1>
+```
+
+Ultimately, the `longhorn-manager` creates this disk image and exposes it over the Kubernetes cluster network as an iSCSI target, which the `longhorn-engine` exposes to its local cluster node as a block device, the CSI driver mounts to the host filesystem hierarchy, and the `kubelet` bind mounts to the pod.
+
+We can also observe Longhorn's thin provisioning in action by looking at the disk usage of the replica:
+
+```
+[root@ip-172-31-43-85 ~]# du -h /var/lib/longhorn/replicas/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-644f7035/volume-head-000.img
+49M	/var/lib/longhorn/replicas/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-644f7035/volume-head-000.img
+```
+
+We see that a 1Gi volume only consumes 49Mi on disk, due to Longhorn using the sparse file support of the filesystem, in this case `ext4`. If we exc into the pod, we will see that the space available appears as expected:
 
 ```sh
-kubectl get pod -n longhorn-system -l longhorn.io/component=instance-manager -o=jsonpath="{range .items[*]}{.status.podIP}"
+kubectl exec -it -n longhorn-demo web-0 -- /bin/sh
 ```
 ```
-10.42.0.34
-```
-
-Go back on the host and we see all of the `longhorn-engine` instances:
-
-```
-[root@ip-172-31-83-248 ~]# ps -aeo args | grep '^/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn' | sed 's/--/\n  --/g'
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b replica /host/var/lib/longhorn/replicas/pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-733eabeb
-  --size 2147483648
-  --disableRevCounter
-  --replica-instance-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-r-c0b0aaf5
-  --snapshot-max-count 250
-  --snapshot-max-size 0
-  --sync-agent-port-count 7
-  --listen 0.0.0.0:10000
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b replica /host/var/lib/longhorn/replicas/pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-841fa34c
-  --size 2147483648
-  --disableRevCounter
-  --replica-instance-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-r-48313674
-  --snapshot-max-count 250
-  --snapshot-max-size 0
-  --sync-agent-port-count 7
-  --listen 0.0.0.0:10010
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b sync-agent
-  --listen 0.0.0.0:10002
-  --replica 0.0.0.0:10000
-  --listen-port-range 10003-10009
-  --replica-instance-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-r-c0b0aaf5
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b sync-agent
-  --listen 0.0.0.0:10012
-  --replica 0.0.0.0:10010
-  --listen-port-range 10013-10019
-  --replica-instance-name pvc-89c15dec-5de1-4b58-b791-7fd23d50025b-r-48313674
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152 replica /host/var/lib/longhorn/replicas/pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152-920821dc
-  --size 1073741824
-  --disableRevCounter
-  --replica-instance-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152-r-9990ae73
-  --snapshot-max-count 250
-  --snapshot-max-size 0
-  --sync-agent-port-count 7
-  --listen 0.0.0.0:10042
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152 sync-agent
-  --listen 0.0.0.0:10044
-  --replica 0.0.0.0:10042
-  --listen-port-range 10045-10051
-  --replica-instance-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152-r-9990ae73
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152 replica /host/var/lib/longhorn/replicas/pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152-5dc65752
-  --size 1073741824
-  --disableRevCounter
-  --replica-instance-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152-r-cf12fbd6
-  --snapshot-max-count 250
-  --snapshot-max-size 0
-  --sync-agent-port-count 7
-  --listen 0.0.0.0:10052
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152 sync-agent
-  --listen 0.0.0.0:10054
-  --replica 0.0.0.0:10052
-  --listen-port-range 10055-10061
-  --replica-instance-name pvc-f1c2d445-7667-4fd7-9ae4-0196af70e152-r-cf12fbd6
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f replica /host/var/lib/longhorn/replicas/pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f-5ba606f3
-  --size 1073741824
-  --disableRevCounter
-  --replica-instance-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f-r-a373c535
-  --snapshot-max-count 250
-  --snapshot-max-size 0
-  --sync-agent-port-count 7
-  --listen 0.0.0.0:10063
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f replica /host/var/lib/longhorn/replicas/pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f-c32207cf
-  --size 1073741824
-  --disableRevCounter
-  --replica-instance-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f-r-c6cf5160
-  --snapshot-max-count 250
-  --snapshot-max-size 0
-  --sync-agent-port-count 7
-  --listen 0.0.0.0:10073
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f sync-agent
-  --listen 0.0.0.0:10065
-  --replica 0.0.0.0:10063
-  --listen-port-range 10066-10072
-  --replica-instance-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f-r-a373c535
-/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn
-  --volume-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f sync-agent
-  --listen 0.0.0.0:10075
-  --replica 0.0.0.0:10073
-  --listen-port-range 10076-10082
-  --replica-instance-name pvc-b636e828-6c7e-413f-8cd3-f292d8cd8d8f-r-c6cf5160
+# df -h /usr/share/nginx/html
+Filesystem                                              Size  Used Avail Use% Mounted on
+/dev/longhorn/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da  974M   28K  958M   1% /usr/share/nginx/html
 ```
 
-We see there are now 12 of these, which correspond to 2 replicas and 1 sync agent for each of the three volumes we created. There is some inconsistency here with the Longhorn documentation, which implies a new pod is created for each `longhorn-engine` instance, which may have been the case in the past. In Longhorn as it exists today, the instance manager is instead started with the containerized init process `tini`, which helps a single container launch and manage many processes.
+Subtracting the filesystem metadata from the allocated 1Gi, 974M is available, in spite of a backing image on disk that only consumes 49M
+
+## Longhorn Engine
+
+Go back on the cluster node and we can see all of the `longhorn-engine` instances:
+
+```
+[root@ip-172-31-43-85 ~]# ps -aeo args | grep '^/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn' | sed 's/--/\n  --/g'
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da replica /host/var/lib/longhorn/replicas/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-644f7035
+  --size 1073741824
+  --disableRevCounter
+  --replica-instance-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-r-fd2825a5
+  --snapshot-max-count 250
+  --snapshot-max-size 0
+  --sync-agent-port-count 7
+  --listen :10147
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da sync-agent
+  --listen :10149
+  --replica :10147
+  --listen-port-range 10150-10156
+  --replica-instance-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-r-fd2825a5
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da replica /host/var/lib/longhorn/replicas/pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-e14bb0c8
+  --size 1073741824
+  --disableRevCounter
+  --replica-instance-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-r-696a0c50
+  --snapshot-max-count 250
+  --snapshot-max-size 0
+  --sync-agent-port-count 7
+  --listen :10157
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da sync-agent
+  --listen :10159
+  --replica :10157
+  --listen-port-range 10160-10166
+  --replica-instance-name pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da-r-696a0c50
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151 replica /host/var/lib/longhorn/replicas/pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-eecc3fc9
+  --size 1073741824
+  --disableRevCounter
+  --replica-instance-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-r-67ec9def
+  --snapshot-max-count 250
+  --snapshot-max-size 0
+  --sync-agent-port-count 7
+  --listen :10168
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151 sync-agent
+  --listen :10170
+  --replica :10168
+  --listen-port-range 10171-10177
+  --replica-instance-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-r-67ec9def
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151 replica /host/var/lib/longhorn/replicas/pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-4b1b86ba
+  --size 1073741824
+  --disableRevCounter
+  --replica-instance-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-r-7e4c39be
+  --snapshot-max-count 250
+  --snapshot-max-size 0
+  --sync-agent-port-count 7
+  --listen :10178
+/host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn
+  --volume-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151 sync-agent
+  --listen :10180
+  --replica :10178
+  --listen-port-range 10181-10187
+  --replica-instance-name pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151-r-7e4c39be
+```
+
+We see there are now 8 of these, corresponding to 2 replicas and 2 sync agents for each volume. There is some inconsistency here with the Longhorn documentation, which implies a new pod is created for each `longhorn-engine` instance, which may have been the case in the past. In Longhorn as it exists today, the instance manager is instead started with the containerized init process `tini`, which helps a single container launch and manage many processes.
 
 An excerpt from `ps x --forest` shows the relationship:
 
 ```
-6369 ?        Sl     0:43 /var/lib/rancher/k3s/data/86a616cdaf0fb57fa13670ac5a16f1699f4b2be4772e842d97904c69698ffdc2/bin/containerd-shim-runc-v2 -n
-  11555 ?        Ss     0:01  \_ /tini -- instance-manager --debug daemon --listen 0.0.0.0:8500
-  11568 ?        Sl     1:40      \_ longhorn-instance-manager --debug daemon --listen 0.0.0.0:8500
-  11572 ?        Sl     0:02          \_ tgtd -f
-  11573 ?        S      0:00          \_ tee /var/log/tgtd.log
- 635817 ?        Sl     0:02          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-89c15dec-
- 635839 ?        Sl     0:03          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-89c15
- 635830 ?        Sl     0:02          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-89c15dec-
- 635849 ?        Sl     0:03          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-89c15
- 635899 ?        Sl     0:14          \_ /engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --engine-instance-name pvc-89c15dec-5de1-4b58-b79
- 715562 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-f1c2d445-
- 715571 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-f1c2d
- 715595 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-f1c2d445-
- 715604 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-f1c2d
- 715621 ?        Sl     0:04          \_ /engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --engine-instance-name pvc-f1c2d445-7667-4fd7-9ae
- 716314 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-b636e828-
- 716323 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-b636e
- 716321 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-b636e828-
- 716338 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --volume-name pvc-b636e
- 716447 ?        Sl     0:04          \_ /engine-binaries/longhornio-longhorn-engine-v1.9.2/longhorn --engine-instance-name pvc-b636e828-6c7e-413f-8cd
+22186 ?        Sl     0:06 /var/lib/rancher/k3s/data/86a616cdaf0fb57fa13670ac5a16f1699f4b2be4772e842d97904c69698ffdc2/bin/containerd-shim-runc-v2
+  27261 ?        Ss     0:00  \_ /tini -- instance-manager --debug daemon --listen :8500
+  27274 ?        Sl     1:54      \_ longhorn-instance-manager --debug daemon --listen :8500
+  27278 ?        Sl     0:01          \_ tgtd -f
+  27279 ?        S      0:00          \_ tee /var/log/tgtd.log
+ 112758 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-6ab4c3
+ 112767 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-6a
+ 112790 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-6ab4c3
+ 112799 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-6a
+ 112841 ?        Sl     0:04          \_ /engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --engine-instance-name pvc-6ab4c383-fda1-4c95-
+ 113362 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-5d10b7
+ 113371 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-5d
+ 113385 ?        Sl     0:00          \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-5d10b7
+ 113403 ?        Sl     0:01          |   \_ /host/var/lib/longhorn/engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --volume-name pvc-5d
+ 113444 ?        Sl     0:04          \_ /engine-binaries/longhornio-longhorn-engine-v1.10.0/longhorn --engine-instance-name pvc-5d10b78c-0f44-4d6b-
 ```
+
+These are extremely lightweight processes. We can see the processor and memory consumption of all of them:
+
+```
+[root@ip-172-31-43-85 ~]# ps -eo pid,%cpu,%mem | grep -E '22186|27261|27274|27278|27279|112758|112767|112790|112799|112841|113362|113371|113385|113403|113444'
+  22186  0.0  0.1
+  27261  0.0  0.0
+  27274  1.7  0.4
+  27278  0.0  0.0
+  27279  0.0  0.0
+ 112758  0.0  0.2
+ 112767  0.0  0.2
+ 112790  0.0  0.2
+ 112799  0.0  0.2
+ 112841  0.2  0.2
+ 113362  0.0  0.2
+ 113371  0.0  0.2
+ 113385  0.0  0.2
+ 113403  0.0  0.2
+ 113444  0.2  0.2
+```
+
+Cumulatively, about 2% each of a core and RAM on a host with 4 cores and 16Gi of RAM (15Gi non-reserved).
