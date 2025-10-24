@@ -240,6 +240,6 @@ Forward port 80 to 8080 on your local workstation:
 kubectl port-forward -n longhorn-demo svc/web 8080:80
 ```
 
-Then visit http://localhost:8080 and you should see the restored website with its original date intact:
+Then visit http://localhost:8080 and you should see the restored website with its original data intact:
 
 ![restored website](static/restored_website.png)
