@@ -72,7 +72,7 @@ No modules.
 
 | Name | Description |
 |------|-------------|
-| <a name="output_backups_access_key_id"></a> [backups\_access\_key\_id](#output\_backups\_access\_key\_id) | n/a |
-| <a name="output_backups_secret_access_key"></a> [backups\_secret\_access\_key](#output\_backups\_secret\_access\_key) | n/a |
-| <a name="output_server_ip"></a> [server\_ip](#output\_server\_ip) | n/a |
+| <a name="output_backups_access_key_id"></a> [backups\_access\_key\_id](#output\_backups\_access\_key\_id) | AWS\_ACCESS\_KEY\_ID value to inject into s3 backup secret |
+| <a name="output_backups_secret_access_key"></a> [backups\_secret\_access\_key](#output\_backups\_secret\_access\_key) | AWS\_SECRET\_ACCESS\_KEY value to inject into s3 backup secret |
+| <a name="output_server_ip"></a> [server\_ip](#output\_server\_ip) | Elastic IP attached to server for ingress |
 <!-- END_TF_DOCS -->
