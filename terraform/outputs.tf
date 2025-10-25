@@ -8,5 +8,5 @@ output "backups_access_key_id" {
 
 output "backups_secret_access_key" {
   sensitive = true
-  value = aws_iam_access_key.backups.secret
+  value     = aws_iam_access_key.backups.secret
 }

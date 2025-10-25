@@ -30,12 +30,14 @@ mount -a
 # need public ip in kubeconfig cert to access from outside
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
-echo -en "\n" >> /etc/rancher/k3s/config.yaml
 echo "tls-san:" >> /etc/rancher/k3s/config.yaml
 echo "  - $PUBLIC_IP" >> /etc/rancher/k3s/config.yaml
 
 # installing k3s also starts it
 curl -fsLS "https://get.k3s.io" | INSTALL_K3S_CHANNEL=stable sh -
+
+# kernel modules required by longhorn
+sudo modprobe -a dm_crypt iscsi_tcp nfs
 
 # services required by longhorn
 systemctl enable multipathd
@@ -50,13 +52,13 @@ echo "export CRI_CONFIG_FILE=/var/lib/rancher/k3s/agent/etc/crictl.yaml" >> /roo
 # wait for k3s to be up - won't take 10 minutes, but being safe
 timeout 10m bash -c 'until [ -f /etc/rancher/k3s/k3s.yaml ]; do sleep 1; done'
 
-# create the basic auth secret for longhorn-ui
+# create the basic auth secret for longhorn-ui and the encrypted storage class secret
 #
 # this is NOT the secure way to store a password for basic auth since it doesn't hash
 # the password, but we do it this way in order to be able to retrieve the password
 # for use without knowing what it is in advance, since it is randomly generated
 #
-# the preferred way to store a basic auth is to create a user file using htpasswd
+# the preferred way to store basic auth is to create a user file using htpasswd
 # and store it in an Opaque secret under the key 'auth', which standard ingress
 # controllers including traefik can use
 cat <<EOF | /usr/local/bin/kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml create -f -
@@ -74,7 +76,20 @@ metadata:
 type: kubernetes.io/basic-auth
 stringData:
   username: longhorn
-  password: $(openssl rand -hex 20)
+  password: $(openssl rand -hex 16)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: longhorn-crypto-key
+  namespace: longhorn-system
+stringData:
+  CRYPTO_KEY_VALUE: $(openssl rand -hex 16)
+  CRYPTO_KEY_PROVIDER: secret
+  CRYPTO_KEY_CIPHER: aes-xts-plain64
+  CRYPTO_KEY_HASH: sha256
+  CRYPTO_KEY_SIZE: "256"
+  CRYPTO_PBKDF: argon2i
 EOF
 
 # copy the kubeconfig to default user so you can scp it back to your own workstation

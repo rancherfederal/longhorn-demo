@@ -1,7 +1,7 @@
 # bucket to store backups
 resource "aws_s3_bucket" "backups" {
-  bucket = "${var.resource_name}-backups"
-  force_destroy = true
+  bucket              = "${var.resource_name}-backups"
+  force_destroy       = true
   object_lock_enabled = false # longhorn itself handles this
 }
 
@@ -20,7 +20,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "backups" {
     bucket_key_enabled = true
 
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "AES256"
+      sse_algorithm = "AES256"
     }
   }
 }
@@ -43,9 +43,9 @@ data "aws_iam_policy_document" "backups" {
 }
 
 resource "aws_iam_policy" "backups" {
-  name = "${var.resource_name}-backups"
+  name        = "${var.resource_name}-backups"
   description = "Allow IAM user to perform Longhorn Volume backups"
-  policy = data.aws_iam_policy_document.backups.json
+  policy      = data.aws_iam_policy_document.backups.json
 }
 
 resource "aws_iam_user" "backups" {
@@ -53,10 +53,10 @@ resource "aws_iam_user" "backups" {
 }
 
 resource "aws_iam_user_policy_attachment" "backups" {
-  user = aws_iam_user.backups.name
+  user       = aws_iam_user.backups.name
   policy_arn = aws_iam_policy.backups.arn
 }
 
 resource "aws_iam_access_key" "backups" {
-  user = aws_iam_user.backups.name  
+  user = aws_iam_user.backups.name
 }

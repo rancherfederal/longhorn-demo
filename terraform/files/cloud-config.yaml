@@ -13,29 +13,23 @@ ssh_authorized_keys:
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKfcJb6/jblOBMgwYwhZWk65vIpFuv9PZ2Dt0ulO+ccK
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3Trbi3L21QECLF067lbZU4tjV2l3wnhE++C7PTZ6mQ
 write_files:
-  - content: |-
+  - content: |
       dm_crypt
       iscsi_tcp
       nfs
     path: /etc/modules-load.d/10-longhorn.conf
-    owner: root:root
-    permissions: '0644'
-  - content: |-
+  - content: |
       blacklist {
           devnode "^sd[a-z0-9]+"
       }
     path: /etc/multipath.conf
-    owner: root:root
-    permissions: '0644'
-  - content: |-
+  - content: |
       Defaults    secure_path = /sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
     path: /etc/sudoers.d/80-secure-path
-    owner: root:root
     permissions: '0640'
-  - content: |-
+  - content: |
       disable:
         - local-storage
       selinux: true
     path: /etc/rancher/k3s/config.yaml
-    owner: root:root
     permissions: '0640'

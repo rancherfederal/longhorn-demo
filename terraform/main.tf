@@ -178,7 +178,7 @@ data "aws_ami" "server_base" {
 }
 
 resource "aws_instance" "server" {
-  ami = data.aws_ami.server_base.id
+  ami                    = data.aws_ami.server_base.id
   iam_instance_profile   = aws_iam_instance_profile.server.name
   instance_type          = var.instance_type
   user_data_base64       = data.cloudinit_config.server.rendered
