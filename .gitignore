@@ -11,3 +11,4 @@
 **/*.csr
 **/*.srl
 **/.terraform.lock.hcl
+notes/

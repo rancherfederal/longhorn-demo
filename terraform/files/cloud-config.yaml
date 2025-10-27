@@ -4,7 +4,13 @@ packages:
   - cryptsetup
   - device-mapper-multipath
   - iscsi-initiator-utils
+  - kernel-modules-extra
   - vim
+package_update: true
+package_upgrade: true
+power_state:
+  delay: now
+  mode: reboot
 ssh_authorized_keys:
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGUV5mYJt2mNSayglG9+ez4W66Cj5PdBfvg5+Mqf+e9G
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIFImBVFJQBAFxUj0T3U8Twht11AeH7S3ZBAufhHTHjz
