@@ -30,7 +30,7 @@ On the host, we see we now have a block device of type `crypto_LUKS`:
 Delete the pod to unmount the data:
 
 ```sh
-kubectl delete pod -n demo encrypted-volume-test
+kubectl delete pod -n longhorn-demo encrypted-volume-test
 ```
 
 Now on the host observe the backing image of one of the replicas:
