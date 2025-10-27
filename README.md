@@ -47,6 +47,8 @@ Watch for the certificate to be issued:
 watch kubectl get certificate -n longhorn-system longhorn
 ```
 
+This typically takes about 90s before the `Certificate` resources goes into a ready status. If it does not, you can troubleshoot by checking the status of the corresponding `CertificateRequest` and `Order` resources or viewing the `cert-manager` logs.
+
 Assuming the certificates exist, we can create the secret for mTLS:
 
 ```sh

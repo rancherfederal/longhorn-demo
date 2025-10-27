@@ -6,6 +6,8 @@ metadata:
 spec:
   version: v1.19.1
   chart: cert-manager
+  targetNamespace: cert-manager
+  createNamespace: true
   repo: https://charts.jetstack.io
   valuesContent: |-
     crds:

@@ -1,6 +1,6 @@
 **/.terraform/
+**/*.tfstate*
 **/*.tfstate
-**/*.tfstate.backup
 **/backend.tf
 **/k3s.yaml
 **/rke2.yaml
