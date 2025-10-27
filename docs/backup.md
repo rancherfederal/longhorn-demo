@@ -186,7 +186,7 @@ spec:
 These are identical to the original pvs except that they reference a pre-existing Longhorn `Volume` since they are not being dynamically provisioned, and the names are chosen to match the `Volume` names. To create them:
 
 ```sh
-kubectl create -f manifests/pvs_from_backup_vols.yaml
+kubectl create -f manifests/pvs-from-backup-vols.yaml
 ```
 
 Now all we need to do is create `PersistentVolumeClaim` resources in the `longhorn-demo` namespace matching the naming scheme for a `StatefulSet` `spec.VolumeClaimTemplate`, which we know from earlier means they must be named `www-web-0` and `www-web-1`, which is just the claim template name prepended to each pod name. They will look like below:
@@ -225,7 +225,7 @@ spec:
 To create them:
 
 ```sh
-kubectl create -f manifests/pvcs_from_pvs.yaml
+kubectl create -f manifests/pvcs-from-pvs.yaml
 ```
 
 Now scale the `StatefulSet` back up:

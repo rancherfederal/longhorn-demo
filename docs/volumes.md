@@ -12,7 +12,7 @@ kubectl create ns longhorn-demo
 kubectl create -f manifests/statefulset.yaml
 ```
 
-This creates a `StatefulSet` with two pods that share a single data volume. The pods run `nginx` and the volume stores the static web data. In this case, the volume would start out empty, so an init container is added that checks for the existence of an `index.html` file and writes one if it does not exist.
+This creates a `StatefulSet` with two pods, each of which is attached to its own data volume. The pods run `nginx` and the volumes stores the static web data. In this case, the volumes would start out empty, so an init container is added that checks for the existence of an `index.html` file and writes one if it does not exist. No mechanism is provided to keep these in sync with each other. In a real website, this would typically be accomplished by including static assets in the container image, with dynamic content stored in a database. `PersistentVolume` resources attached to individual pods like this would be used for local caching of content that can tolerate eventual consistency.
 
 From the remote host, we can see that Longhorn has created `Volume` CRs:
 
@@ -48,7 +48,7 @@ pvc-5d10b78c-0f44-4d6b-88e6-f38b21dca151   1Gi        RWO            Delete     
 pvc-6ab4c383-fda1-4c95-b1a1-e3c5450400da   1Gi        RWO            Delete           Bound    longhorn-demo/www-web-0   longhorn       <unset>                          51m
 ```
 
-Though `PersistentVolumeClaim` resources are namespaced and will exist in the same namespace as the pods they attach to, the `PersistentVolume` resources and not namespaced and the Longhorn `Volume` and `Replica` CRs will always exist in the `longhorn-system` namespace.
+Though `PersistentVolumeClaim` resources are namespaced and will exist in the same namespace as the pods they attach to, the `PersistentVolume` resources are not namespaced and the Longhorn `Volume` and `Replica` CRs will always exist in the `longhorn-system` namespace.
 
 ## Data persistence
 

@@ -12,12 +12,14 @@ Writes to storage pass through the `longhorn-engine`, which synchronously writes
 
 ## iSCSI
 
-iSCSI is the Internet Small Computer Systems Interface, called such because it emulates SCSI, usually run over a bus on the motherboard, over an IP network. Software support is required for this, in the form of kernel drivers and a set of userspace tools usually provided for Linux by the `open-iscsi` project.
+iSCSI is the Internet Small Computer Systems Interface, called such because it emulates SCSI, usually run over a bus on the motherboard, over an IP network. Software support is required for this, in the form of kernel drivers (`iscsi_tcp` for Linux) and a set of userspace tools usually provided for Linux by the `open-iscsi` project.
 
-A dedicated storage cluster separate from compute nodes is often used in physical storage network architecures that utilize iSCSI, and a similar setup is often seen with storage providers for Kubernetes. Longhorn, in contrast, does not assume the existence of any resources beyond the cluster nodes themselves, relying upon disks physically attached to your cluster nodes. As a best practice, these should be separate disks not used for anything else.
+A dedicated storage cluster separate from compute nodes is often used in physical storage area network architectures that utilize iSCSI, and a similar setup is often seen with storage providers for Kubernetes. Longhorn, in contrast, does not assume the existence of any resources beyond the cluster nodes themselves, relying upon disks attached to your cluster nodes. As a best practice, these should be separate disks not used for anything else. They do not absolutely *have* to be SSDs, but Longhorn makes no guarantees regarding system stability when needing to account for the additional latency of spinning platter seeks, so SSDs are *highly* recommended.
 
 ## Diagram
 
 The following logical diagram is lifted from the Longhorn documentation showing all of these relationships visually.
 
 ![Longhorn Overview](static/how-longhorn-works.svg)
+
+This shows an architecture in which each `Volume` is backed by two `Replica`s on a two-node cluster, with each `Replica` scheduled to its own separate disk. This provides high availability via multiple layers of redundancy at both the node level *and* the disk level within each node.

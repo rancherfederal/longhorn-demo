@@ -11,13 +11,13 @@ Longhorn encrypts volumes at rest using the `dm_crypt` kernel module and `crypts
 To create an encrypted storage class:
 
 ```sh
-kubectl create -f manifests/encrypted_storage_class.yaml
+kubectl create -f manifests/encrypted-storage-class.yaml
 ```
 
 Create an example pod that mounts an encrypted volume:
 
 ```sh
-kubectl create -f manifests/pod_with_encrypted_pvc.yaml
+kubectl create -f manifests/pod-with-encrypted-pvc.yaml
 ```
 
 On the host, we see we now have a block device of type `crypto_LUKS`:

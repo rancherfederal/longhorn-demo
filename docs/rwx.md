@@ -13,7 +13,7 @@ A `share-manager` pod is created for each volume that is created with this acces
 Create the resources:
 
 ```sh
-kubectl create -f manifests/pods_with_rwx_volume.yaml
+kubectl create -f manifests/pods-with-rwx-volume.yaml
 ```
 
 Observe that a `share-manager` pod running the NFS server appears once the PVC is bound and its pods come up:
