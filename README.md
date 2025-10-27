@@ -20,6 +20,23 @@ It will take a few minutes for `cloud-init` to complete and `k3s` will not be av
 sudo tail -f /var/log/cloud-init-output.log
 ```
 
+## Gain cluster access
+
+When `cloud-init` is finished provisioning, you can copy down the default admin kubeconfig, which should now be available in the default user's home directory:
+
+```sh
+scp rocky@34.193.46.206:~/k3s.yaml .
+export KUBECONFIG="$(pwd)/k3s.yaml"
+```
+
+To check that sshd is ready and listening:
+
+```sh
+nc -z $(terraform -chdir=terraform output server_ip | tr -d '"') 22
+```
+
+Currently, `cloud-init` has to perform a reboot to pick up the required `xt_conntrack` kernel module, which is no longer part of the default install, so this may take a few minutes after the node first shows up as running.
+
 ## Install Resources
 
 Install cert-manager:
@@ -86,7 +103,13 @@ Note that the secret for basic auth will have already been created, along with t
 kubectl get secret -n longhorn-system authsecret -ogo-template='{{.data.password | base64decode}}'
 ```
 
-The username is `longhorn`. Navigate to the [Longhorn UI](https://longhorn.rgsdemo.com) and a pop-up should appear prompting you for the username and password.
+The username is `longhorn`. Navigate to the [Longhorn UI](https://longhorn.rgsdemo.com) and a pop-up should appear prompting you for the username and password. You can create a link that includes the auth credentials by running:
+
+```sh
+echo "https://longhorn:$(kubectl get secret -n longhorn-system authsecret -ogo-template='{{.data.password | base64decode}}')@longhorn.rgsdemo.com"
+```
+
+Follow that directly and no pop-up will be necessary.
 
 ## Demo run-through
 
